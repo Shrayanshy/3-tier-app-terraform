@@ -96,13 +96,14 @@ resource "aws_instance" "tomcat_instance" {
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
-              yum install -y 
-              
-
-              wget -O /usr/share/tomcat8/webapps/student.war http://example.com/path/to/student.war
-
-              service tomcat8 start
-              chkconfig tomcat8 on
+              yum install -y java-1.8.0-amazon-corretto-devel.x86_64 
+              wget https://dlcdn.apache.org/tomcat/tomcat-8/v8.5.91/bin/apache-tomcat-8.5.91.zip
+              unzip apache-tomcat-8.5.91.zip
+              mv apache-tomcat-8.5.91 apache
+              cd apache
+              cd webapps && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
+              cd .. && cd lib  && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql-connector.jar
+              cd .. && sudo chmod 744 bin/* && cd bin &&  bash startup.sh
               EOF
   
   security_groups = [aws_security_group.tomcat_sg.id]
