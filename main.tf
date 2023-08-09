@@ -187,9 +187,6 @@ variable "database_password" {
   description = "Database password"
 }
 
-variable "rds_endpoint" {
-  description = "RDS endpoint"
-}
 
 variable "database_name" {
   description = "Database name"
