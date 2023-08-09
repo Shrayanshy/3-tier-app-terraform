@@ -35,7 +35,7 @@ resource "aws_db_instance" "rds_instance" {
   engine              = "mysql"
   engine_version      = "5.7"
   instance_class      = "db.t3.micro"
-  identifier          = "mydb1"  # Use identifier instead of name
+  identifier          = "mydb1"
   username            = var.database_username
   password            = var.database_password
   parameter_group_name = "default.mysql5.7"
@@ -44,11 +44,14 @@ resource "aws_db_instance" "rds_instance" {
   tags = {
     Name = "MyRDSInstance"
   }
-  
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
-  lifecycle {
-    ignore_changes = [allocated_storage, engine_version]
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  
+  provisioner "remote-exec" {
+    inline = [
+      "mysql -h ${self.endpoint} -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'",
+      "mysql -h ${self.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'"
+    ]
   }
 }
 
@@ -143,12 +146,6 @@ resource "aws_instance" "tomcat_instance" {
               EOF
   
   security_groups = [aws_security_group.tomcat_sg.id]
-
-  connection {
-    type        = "ssh"
-    user        = "ec2-user"  # Replace with the appropriate SSH user
-    private_key = file("~/.ssh/id_rsa")  # Replace with the path to your SSH private key
-  }
 }
 
 resource "aws_instance" "nginx_instance" {
@@ -160,38 +157,22 @@ resource "aws_instance" "nginx_instance" {
               #!/bin/bash
               yum update -y
               yum install -y nginx
-              # ... (other user data setup)
+
+              cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
+              server {
+                  listen 80;
+
+                  location / {
+                      proxy_pass http://${aws_instance.tomcat_instance.private_ip}:8080;
+                  }
+              }
+              EOC
+
+              service nginx start
+              chkconfig nginx on
               EOF
   
   security_groups = [aws_security_group.nginx_sg.id]
-}
-
-resource "null_resource" "create_database" {
-  triggers = {
-    # Change this trigger whenever you need to recreate the database
-    timestamp = timestamp()
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      aws rds create-db-instance \
-        --db-instance-identifier mydb1 \
-        --allocated-storage 20 \
-        --db-instance-class db.t3.micro \
-        --engine mysql \
-        --engine-version 5.7 \
-        --master-username ${var.database_username} \
-        --master-user-password ${var.database_password} \
-        --skip-final-snapshot \
-        --db-subnet-group-name my-rds-subnet-group \
-        --tags "Key=Name,Value=MyRDSInstance"
-
-      aws rds wait db-instance-available --db-instance-identifier mydb1
-
-      mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'
-      mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'
-    EOT
-  }
 }
 
 variable "database_username" {
