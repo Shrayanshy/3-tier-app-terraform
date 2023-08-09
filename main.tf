@@ -17,6 +17,55 @@ resource "aws_subnet" "private_subnet" {
   cidr_block = "10.0.2.0/24"
 }
 
+resource "aws_db_subnet_group" "rds_subnet_group" {
+  name       = "my-rds-subnet-group"
+  subnet_ids = [aws_subnet.private_subnet.id]
+}
+
+resource "aws_db_instance" "rds_instance" {
+  allocated_storage    = 20
+  storage_type        = "gp2"
+  engine              = "mysql"
+  engine_version      = "5.7"
+  instance_class      = "db.t2.micro"
+  identifier          = "mydb"  # Use identifier instead of name
+  username            = var.database_username
+  password            = var.database_password
+  parameter_group_name = "default.mysql5.7"
+  skip_final_snapshot = true
+
+  tags = {
+    Name = "MyRDSInstance"
+  }
+  
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+
+  lifecycle {
+    ignore_changes = [allocated_storage, engine_version]
+  }
+}
+
+resource "aws_security_group" "rds_sg" {
+  name        = "rds-sg"
+  description = "Security group for RDS instance"
+  
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  // Add more inbound rules as needed
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_security_group" "nginx_sg" {
   name        = "nginx-sg"
   description = "Security group for Nginx instance"
@@ -38,41 +87,14 @@ resource "aws_security_group" "nginx_sg" {
   }
 }
 
-resource "aws_instance" "nginx_instance" {
-  ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
-  instance_type = "t3.micro"     # Change as needed
-  subnet_id     = aws_subnet.public_subnet.id
-  
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y nginx
-
-              cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
-              server {
-                  listen 80;
-
-                  location / {
-                      proxy_pass http://${aws_instance.tomcat_instance.private_ip}:8080;
-                  }
-              }
-              EOC
-
-              service nginx start
-              chkconfig nginx on
-              EOF
-  
-  security_groups = [aws_security_group.nginx_sg.id]
-}
-
 resource "aws_security_group" "tomcat_sg" {
   name        = "tomcat-sg"
   description = "Security group for Tomcat instance"
   
   ingress {
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
     security_groups = [aws_security_group.nginx_sg.id] # Allow traffic from Nginx instance
   }
   
@@ -108,7 +130,7 @@ resource "aws_instance" "tomcat_instance" {
     <Resource name=\"jdbc/TestDB\" auth=\"Container\" type=\"javax.sql.DataSource\" 
               maxActive=\"100\" maxIdle=\"30\" maxWait=\"10000\" username=\"${var.database_username}\" password=\"${var.database_password}\" 
               driverClassName=\"com.mysql.jdbc.Driver\"
-              url=\"jdbc:mysql://${var.rds_endpoint}:3306/${var.database_name}?autoReconnect=true\" 
+              url=\"jdbc:mysql://${aws_db_instance.rds_instance.endpoint}:3306/${var.database_name}?autoReconnect=true\" 
               validationQuery=\"SELECT 1\" testOnBorrow=\"true\" />
 </Context>" > /usr/share/tomcat8/conf/context.xml
               EOF
@@ -116,54 +138,31 @@ resource "aws_instance" "tomcat_instance" {
   security_groups = [aws_security_group.tomcat_sg.id]
 }
 
-resource "aws_db_subnet_group" "rds_subnet_group" {
-  name       = "my-rds-subnet-group"
-  subnet_ids = [aws_subnet.private_subnet.id]
-}
+resource "aws_instance" "nginx_instance" {
+  ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
+  instance_type = "t3.micro"     # Change as needed
+  subnet_id     = aws_subnet.public_subnet.id
+  
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install -y nginx
 
-resource "aws_db_instance" "rds_instance" {
-  allocated_storage    = 20
-  storage_type        = "gp2"
-  engine              = "mysql"
-  engine_version      = "5.7"
-  instance_class      = "db.t2.micro"
-  name                = "mydb"
-  username            = var.database_username
-  password            = var.database_password
-  parameter_group_name = "default.mysql5.7"
-  skip_final_snapshot = true
-  subnet_group_name = aws_db_subnet_group.rds_subnet_group.name
-  
-  tags = {
-    Name = "MyRDSInstance"
-  }
-  
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+              cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
+              server {
+                  listen 80;
 
-  lifecycle {
-    ignore_changes = [allocated_storage, engine_version]
-  }
-}
+                  location / {
+                      proxy_pass http://${aws_instance.tomcat_instance.private_ip}:8080;
+                  }
+              }
+              EOC
 
-resource "aws_security_group" "rds_sg" {
-  name        = "rds-sg"
-  description = "Security group for RDS instance"
+              service nginx start
+              chkconfig nginx on
+              EOF
   
-  ingress {
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
-  // Add more inbound rules as needed
-  
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  security_groups = [aws_security_group.nginx_sg.id]
 }
 
 resource "null_resource" "create_database" {
@@ -202,4 +201,8 @@ output "public_instance_ip" {
 
 output "private_instance_ip" {
   value = aws_instance.tomcat_instance.private_ip
+}
+
+output "rds_endpoint" {
+  value = aws_db_instance.rds_instance.endpoint
 }
