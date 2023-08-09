@@ -118,7 +118,7 @@ resource "aws_security_group" "tomcat_sg" {
 resource "aws_instance" "tomcat_instance" {
   ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
   instance_type = "t3.micro"     # Change as needed
-  subnet_id     = aws_subnet.private_subnet.id
+  subnet_id     = aws_subnet.private_subnet_1.id
   
   user_data = <<-EOF
               #!/bin/bash
