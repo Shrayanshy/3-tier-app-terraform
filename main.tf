@@ -39,7 +39,7 @@ resource "aws_security_group" "nginx_sg" {
 }
 
 resource "aws_instance" "nginx_instance" {
-  ami           = "ami-12345678" # Replace with a valid AMI ID
+  ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
   instance_type = "t2.micro"     # Change as needed
   subnet_id     = aws_subnet.public_subnet.id
   
@@ -51,11 +51,10 @@ resource "aws_instance" "nginx_instance" {
               cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
               server {
                   listen 80;
-                
+                  server_name example.com;
 
                   location / {
                       proxy_pass http://${aws_instance.tomcat_instance.private_ip}:8080;
-
                   }
               }
               EOC
@@ -104,9 +103,23 @@ resource "aws_instance" "tomcat_instance" {
               cd webapps && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
               cd .. && cd lib  && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql-connector.jar
               cd .. && sudo chmod 744 bin/* && cd bin &&  bash startup.sh
+
+              echo -e "<?xml version='1.0' encoding='utf-8'?>
+<Context>
+    <Resource name=\"jdbc/StudentDB\" auth=\"Container\" type=\"javax.sql.DataSource\" 
+              maxActive=\"100\" maxIdle=\"30\" maxWait=\"10000\" username=\"${var.database_username}\" password=\"${var.database_password}\" 
+              driverClassName=\"com.mysql.jdbc.Driver\"
+              url=\"jdbc:mysql://${var.rds_endpoint}:3306/${var.database_name}?autoReconnect=true\" 
+              validationQuery=\"SELECT 1\" testOnBorrow=\"true\" />
+</Context>" > /usr/share/tomcat8/conf/context.xml
               EOF
   
   security_groups = [aws_security_group.tomcat_sg.id]
+}
+
+resource "aws_db_subnet_group" "rds_subnet_group" {
+  name       = "my-rds-subnet-group"
+  subnet_ids = [aws_subnet.private_subnet.id]
 }
 
 resource "aws_db_instance" "rds_instance" {
@@ -116,12 +129,72 @@ resource "aws_db_instance" "rds_instance" {
   engine_version      = "5.7"
   instance_class      = "db.t2.micro"
   name                = "mydb"
-  username            = "admin"
-  password            = var.db_password
+  username            = var.database_username
+  password            = var.database_password
   parameter_group_name = "default.mysql5.7"
+  skip_final_snapshot = true
+  subnet_group_name = aws_db_subnet_group.rds_subnet_group.name
   
-  // Add subnet group for private subnet
-  // Add security group for RDS instance
+  tags = {
+    Name = "MyRDSInstance"
+  }
+  
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+
+  lifecycle {
+    ignore_changes = [allocated_storage, engine_version]
+  }
+}
+
+resource "aws_security_group" "rds_sg" {
+  name        = "rds-sg"
+  description = "Security group for RDS instance"
+  
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  // Add more inbound rules as needed
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "null_resource" "create_database" {
+  triggers = {
+    # Change this trigger whenever you need to recreate the database
+    timestamp = timestamp()
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'",
+      "mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'"
+    ]
+  }
+}
+
+variable "database_username" {
+  description = "Database username"
+}
+
+variable "database_password" {
+  description = "Database password"
+}
+
+variable "rds_endpoint" {
+  description = "RDS endpoint"
+}
+
+variable "database_name" {
+  description = "Database name"
 }
 
 output "public_instance_ip" {
