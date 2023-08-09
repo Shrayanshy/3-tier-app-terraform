@@ -1,3 +1,3 @@
 database_username = "admin"
 database_password = "12345678"
-database_name = "student"
+database_name = "studentapp"
