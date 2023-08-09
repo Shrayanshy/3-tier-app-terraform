@@ -105,7 +105,7 @@ resource "aws_instance" "tomcat_instance" {
 
               echo -e "<?xml version='1.0' encoding='utf-8'?>
 <Context>
-    <Resource name=\"jdbc/StudentDB\" auth=\"Container\" type=\"javax.sql.DataSource\" 
+    <Resource name=\"jdbc/TestDB\" auth=\"Container\" type=\"javax.sql.DataSource\" 
               maxActive=\"100\" maxIdle=\"30\" maxWait=\"10000\" username=\"${var.database_username}\" password=\"${var.database_password}\" 
               driverClassName=\"com.mysql.jdbc.Driver\"
               url=\"jdbc:mysql://${var.rds_endpoint}:3306/${var.database_name}?autoReconnect=true\" 
