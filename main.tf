@@ -178,12 +178,28 @@ resource "null_resource" "create_database" {
     timestamp = timestamp()
   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'",
-      "mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'"
-    ]
-    
+  provisioner "local-exec" {
+    command = <<-EOT
+      aws rds create-db-instance \
+        --db-instance-identifier mydb1 \
+        --allocated-storage 20 \
+        --db-instance-class db.t3.micro \
+        --engine mysql \
+        --engine-version 5.7 \
+        --master-username ${var.database_username} \
+        --master-user-password ${var.database_password} \
+        --skip-final-snapshot \
+        --db-subnet-group-name my-rds-subnet-group \
+        --tags "Key=Name,Value=MyRDSInstance"
+
+      aws rds wait db-instance-available --db-instance-identifier mydb1
+
+      mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'
+      mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'
+    EOT
+  }
+}
+
     connection {
       type        = "ssh"
       user        = "ec2-user"  # Replace with the appropriate SSH user
