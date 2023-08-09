@@ -21,11 +21,25 @@ resource "aws_security_group" "nginx_sg" {
   name        = "nginx-sg"
   description = "Security group for Nginx instance"
   
-  // Add necessary inbound and outbound rules here
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  // Add more inbound rules as needed
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_instance" "nginx_instance" {
-  ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
+  ami           = "ami-12345678" # Replace with a valid AMI ID
   instance_type = "t2.micro"     # Change as needed
   subnet_id     = aws_subnet.public_subnet.id
   
@@ -37,14 +51,11 @@ resource "aws_instance" "nginx_instance" {
               cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
               server {
                   listen 80;
-                  server_name example.com;
+                
 
                   location / {
                       proxy_pass http://${aws_instance.tomcat_instance.private_ip}:8080;
-                      proxy_set_header Host \$host;
-                      proxy_set_header X-Real-IP \$remote_addr;
-                      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                      proxy_set_header X-Forwarded-Proto \$scheme;
+
                   }
               }
               EOC
@@ -60,7 +71,21 @@ resource "aws_security_group" "tomcat_sg" {
   name        = "tomcat-sg"
   description = "Security group for Tomcat instance"
   
-  // Add necessary inbound and outbound rules here
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    security_groups = [aws_security_group.nginx_sg.id] # Allow traffic from Nginx instance
+  }
+  
+  // Add more inbound rules as needed
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_instance" "tomcat_instance" {
@@ -71,8 +96,8 @@ resource "aws_instance" "tomcat_instance" {
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
-              yum install -y java-1.8.0-openjdk
-              yum install -y tomcat8-webapps tomcat8-admin-webapps
+              yum install -y 
+              
 
               wget -O /usr/share/tomcat8/webapps/student.war http://example.com/path/to/student.war
 
