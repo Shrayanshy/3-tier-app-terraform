@@ -40,7 +40,7 @@ resource "aws_security_group" "nginx_sg" {
 
 resource "aws_instance" "nginx_instance" {
   ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
-  instance_type = "t2.micro"     # Change as needed
+  instance_type = "t3.micro"     # Change as needed
   subnet_id     = aws_subnet.public_subnet.id
   
   user_data = <<-EOF
@@ -51,7 +51,6 @@ resource "aws_instance" "nginx_instance" {
               cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
               server {
                   listen 80;
-                  server_name example.com;
 
                   location / {
                       proxy_pass http://${aws_instance.tomcat_instance.private_ip}:8080;
@@ -88,8 +87,8 @@ resource "aws_security_group" "tomcat_sg" {
 }
 
 resource "aws_instance" "tomcat_instance" {
-  ami           = "ami-12345678" # Replace with a valid AMI ID
-  instance_type = "t2.micro"     # Change as needed
+  ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
+  instance_type = "t3.micro"     # Change as needed
   subnet_id     = aws_subnet.private_subnet.id
   
   user_data = <<-EOF
