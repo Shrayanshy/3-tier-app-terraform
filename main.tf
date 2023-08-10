@@ -132,7 +132,6 @@ resource "aws_db_instance" "rds_instance" {
     Name = "MyRDSInstance"
   }
 
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
   lifecycle {
     ignore_changes = [allocated_storage, engine_version]
