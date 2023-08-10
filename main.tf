@@ -207,6 +207,7 @@ resource "aws_instance" "tomcat_instance" {
               cd webapps && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
               cd .. && cd lib  && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql-connector.jar
               cd .. && sudo chmod 744 bin/* && cd bin &&  bash startup.sh
+              cd
 
               echo -e "<?xml version='1.0' encoding='utf-8'?>
 <Context>
