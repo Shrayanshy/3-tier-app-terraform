@@ -92,7 +92,6 @@ resource "aws_route" "internet_route" {
   gateway_id             = aws_internet_gateway.my_internet_gateway.id
 }
 
-
 resource "aws_route_table" "private_route_table" {
   vpc_id = aws_vpc.my_vpc.id
 
@@ -132,19 +131,6 @@ resource "aws_db_instance" "rds_instance" {
 
   lifecycle {
     ignore_changes = [allocated_storage, engine_version]
-  }
-}
-
-resource "null_resource" "create_database" {
-  triggers = {
-    timestamp = timestamp()
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      /usr/bin/mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'
-      /usr/bin/mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'
-    EOT
   }
 }
 
@@ -195,11 +181,9 @@ resource "aws_security_group" "tomcat_sg" {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.nginx_sg.name]  # This should be a security group ID, not an IP address
+    security_groups = [aws_security_group.nginx_sg.id]  # This should be a security group ID, not an IP address
   }
 
-  // Add more inbound rules as needed
-  
   egress {
     from_port   = 0
     to_port     = 0
@@ -207,7 +191,6 @@ resource "aws_security_group" "tomcat_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
 
 resource "aws_instance" "tomcat_instance" {
   ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
@@ -217,7 +200,7 @@ resource "aws_instance" "tomcat_instance" {
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
-              yum install -y java-1.8.0-amazon-corretto-devel.x86_64 
+              yum install -y java-1.8.0-amazon-corretto-devel.x86_64 mariadb105-test.x86_64
               wget https://dlcdn.apache.org/tomcat/tomcat-8/v8.5.91/bin/apache-tomcat-8.5.91.zip
               unzip apache-tomcat-8.5.91.zip
               mv apache-tomcat-8.5.91 apache
@@ -232,12 +215,19 @@ resource "aws_instance" "tomcat_instance" {
     <Resource name=\"jdbc/TestDB\" auth=\"Container\" type=\"javax.sql.DataSource\" 
               maxActive=\"100\" maxIdle=\"30\" maxWait=\"10000\" username=\"${var.database_username}\" password=\"${var.database_password}\" 
               driverClassName=\"com.mysql.jdbc.Driver\"
-              url=\"jdbc:mysql://${aws_db_instance.rds_instance.endpoint}:3306/${var.database_name}?autoReconnect=true\" 
+              url=\"jdbc:mysql://${aws_db_instance.rds_instance.address}:3306/${var.database_name}?autoReconnect=true\" 
               validationQuery=\"SELECT 1\" testOnBorrow=\"true\" />
 </Context>" > /root/apache/conf/context.xml
               EOF
 
   security_groups = [aws_security_group.tomcat_sg.id]
+
+  provisioner "remote-exec" {
+    inline = [
+      "/usr/bin/mysql -h ${aws_db_instance.rds_instance.address} -P 3306 -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'",
+      "/usr/bin/mysql -h ${aws_db_instance.rds_instance.address} -P 3306 -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'"
+    ]
+  }
 }
 
 resource "aws_instance" "nginx_instance" {
