@@ -202,6 +202,7 @@ resource "aws_instance" "tomcat_instance" {
   ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
   instance_type = "t3.micro"     # Change as needed
   subnet_id     = aws_subnet.private_subnet_1.id
+  key_name = "eu-1"
 
   user_data = <<-EOF
               #!/bin/bash
@@ -242,25 +243,28 @@ resource "aws_instance" "nginx_instance" {
   ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
   instance_type = "t3.micro"     # Change as needed
   subnet_id     = aws_subnet.public_subnet_1.id
+  key_name = "eu-1"
 
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y nginx
 
-              cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
-              server {
-                  listen 80;
+user_data = <<-EOF
+#!/bin/bash
+yum update -y
+yum install -y nginx
 
-                  location / {
-                      proxy_pass http://${aws_instance.tomcat_instance.private_ip}:8080;
-                  }
-              }
-              EOC
+cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
+server {
+    listen 80;
 
-              service nginx start
-              chkconfig nginx on
-              EOF
+    location / {
+        proxy_pass http://${aws_instance.tomcat_instance.private_ip}:8080;
+    }
+}
+EOC
+
+systemctl start nginx
+systemctl enable nginx
+EOF
+
 
   security_groups = [aws_security_group.nginx_sg.id]
 }
