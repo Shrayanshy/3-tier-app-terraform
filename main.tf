@@ -52,7 +52,7 @@ resource "aws_subnet" "private_subnet_2" {
 
 resource "aws_db_subnet_group" "rds_subnet_group" {
   name       = "my-1rds-subnet-group"
-  subnet_ids = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
+  subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
 }
 
 resource "aws_db_parameter_group" "mariadb_parameter_group" {
@@ -174,13 +174,13 @@ resource "aws_security_group" "tomcat_sg" {
   description = "Security group for Tomcat instance"
   vpc_id = aws_vpc.my_vpc.id
   
-  ingress {
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups =  ["0.0.0.0/0"] # Allow traffic from Nginx instance
-  }
-  
+ingress {
+  from_port       = 8080
+  to_port         = 8080
+  protocol        = "tcp"
+  security_groups =  [aws_security_group.nginx_sg.id]  # This should be a security group ID, not an IP address
+}
+
   // Add more inbound rules as needed
   
   egress {
