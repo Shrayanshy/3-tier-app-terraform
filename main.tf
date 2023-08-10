@@ -29,16 +29,22 @@ resource "aws_db_subnet_group" "rds_subnet_group" {
   subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
 }
 
+resource "aws_db_parameter_group" "mariadb_parameter_group" {
+  name   = "mariadb-parameter-group"
+  family = "mariadb10.6"
+  description = "Parameter group for MariaDB 10.6.14"
+}
+
 resource "aws_db_instance" "rds_instance" {
   allocated_storage    = 20
   storage_type        = "gp2"
   engine              = "mariadb"
-  engine_version      = "10.6.14"
+  engine_version      = "10.6.14"  # Updated MariaDB version
   instance_class      = "db.t3.micro"
   identifier          = "mydb1"
   username            = var.database_username
   password            = var.database_password
-  parameter_group_name = "default.mysql5.7"
+  parameter_group_name = aws_db_parameter_group.mariadb_parameter_group.name
   skip_final_snapshot = true
 
   tags = {
@@ -46,8 +52,6 @@ resource "aws_db_instance" "rds_instance" {
   }
 
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
-
-  // Remove the provisioner "remote-exec" block
 
   lifecycle {
     ignore_changes = [allocated_storage, engine_version]
