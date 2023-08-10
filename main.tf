@@ -230,7 +230,7 @@ resource "aws_instance" "tomcat_instance" {
               driverClassName=\"com.mysql.jdbc.Driver\"
               url=\"jdbc:mysql://${aws_db_instance.rds_instance.address}:3306/${var.database_name}?autoReconnect=true\" 
               validationQuery=\"SELECT 1\" testOnBorrow=\"true\" />
-</Context>" > /root/apache/conf/context.xml
+</Context>" > apache/conf/context.xml
               EOF
 
   security_groups = [aws_security_group.tomcat_sg.id]
