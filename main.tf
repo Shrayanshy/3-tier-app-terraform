@@ -31,7 +31,7 @@ resource "aws_subnet" "private_subnet_2" {
 
 resource "aws_db_subnet_group" "rds_subnet_group" {
   name       = "my-1rds-subnet-group"
-  subnet_ids = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
+  subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
 }
 
 resource "aws_db_parameter_group" "mariadb_parameter_group" {
