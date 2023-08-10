@@ -86,7 +86,24 @@ resource "aws_internet_gateway" "my_internet_gateway" {
   }
 }
 
+resource "aws_route_table" "private_route_table" {
+  vpc_id = aws_vpc.my_vpc.id
 
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.my_nat_gateway.id
+  }
+}
+
+resource "aws_route_table_association" "private_subnet_1_association" {
+  subnet_id      = aws_subnet.private_subnet_1.id
+  route_table_id = aws_route_table.private_route_table.id
+}
+
+resource "aws_route_table_association" "private_subnet_2_association" {
+  subnet_id      = aws_subnet.private_subnet_2.id
+  route_table_id = aws_route_table.private_route_table.id
+}
 
 resource "aws_db_instance" "rds_instance" {
   allocated_storage    = 20
@@ -111,7 +128,6 @@ resource "aws_db_instance" "rds_instance" {
   }
 }
 
-  
 resource "null_resource" "create_database" {
   triggers = {
     timestamp = timestamp()
@@ -125,21 +141,17 @@ resource "null_resource" "create_database" {
   }
 }
 
-
-
 resource "aws_security_group" "rds_sg" {
   name        = "rds-sg"
   description = "Security group for RDS instance"
-  
+
   ingress {
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
-  // Add more inbound rules as needed
-  
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -151,16 +163,14 @@ resource "aws_security_group" "rds_sg" {
 resource "aws_security_group" "nginx_sg" {
   name        = "nginx-sg"
   description = "Security group for Nginx instance"
-  
+
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
-  // Add more inbound rules as needed
-  
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -173,13 +183,13 @@ resource "aws_security_group" "tomcat_sg" {
   name        = "tomcat-sg"
   description = "Security group for Tomcat instance"
   vpc_id = aws_vpc.my_vpc.id
-  
-ingress {
-  from_port       = 8080
-  to_port         = 8080
-  protocol        = "tcp"
-  security_groups =  [aws_security_group.nginx_sg.id]  # This should be a security group ID, not an IP address
-}
+
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.nginx_sg.id]  # This should be a security group ID, not an IP address
+  }
 
   // Add more inbound rules as needed
   
@@ -191,11 +201,12 @@ ingress {
   }
 }
 
+
 resource "aws_instance" "tomcat_instance" {
   ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
   instance_type = "t3.micro"     # Change as needed
   subnet_id     = aws_subnet.private_subnet_1.id
-  
+
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
@@ -218,7 +229,7 @@ resource "aws_instance" "tomcat_instance" {
               validationQuery=\"SELECT 1\" testOnBorrow=\"true\" />
 </Context>" > /root/apache/conf/context.xml
               EOF
-  
+
   security_groups = [aws_security_group.tomcat_sg.id]
 }
 
@@ -226,7 +237,7 @@ resource "aws_instance" "nginx_instance" {
   ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
   instance_type = "t3.micro"     # Change as needed
   subnet_id     = aws_subnet.public_subnet_1.id
-  
+
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
@@ -245,7 +256,7 @@ resource "aws_instance" "nginx_instance" {
               service nginx start
               chkconfig nginx on
               EOF
-  
+
   security_groups = [aws_security_group.nginx_sg.id]
 }
 
