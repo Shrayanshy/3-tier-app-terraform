@@ -32,8 +32,8 @@ resource "aws_db_subnet_group" "rds_subnet_group" {
 resource "aws_db_instance" "rds_instance" {
   allocated_storage    = 20
   storage_type        = "gp2"
-  engine              = "MariaDB"
-  engine_version      = "10.6.14"
+  engine              = "mysql"
+  engine_version      = "5.7"
   instance_class      = "db.t3.micro"
   identifier          = "mydb1"
   username            = var.database_username
