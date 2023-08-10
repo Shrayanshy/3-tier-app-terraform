@@ -33,7 +33,7 @@ resource "aws_db_instance" "rds_instance" {
   allocated_storage    = 20
   storage_type        = "gp2"
   engine              = "mariadb"
-  engine_version      = "10.4"
+  engine_version      = "10.6.14"
   instance_class      = "db.t3.micro"
   identifier          = "mydb1"
   username            = var.database_username
