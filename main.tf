@@ -137,6 +137,7 @@ resource "aws_db_instance" "rds_instance" {
 resource "aws_security_group" "rds_sg" {
   name        = "rds-sg"
   description = "Security group for RDS instance"
+ vpc_id = aws_vpc.my_vpc.id
 
   ingress {
     from_port   = 3306
@@ -156,6 +157,7 @@ resource "aws_security_group" "rds_sg" {
 resource "aws_security_group" "nginx_sg" {
   name        = "nginx-sg"
   description = "Security group for Nginx instance"
+  vpc_id = aws_vpc.my_vpc.id
 
   ingress {
     from_port   = 80
