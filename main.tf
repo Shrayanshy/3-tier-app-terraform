@@ -230,7 +230,7 @@ resource "aws_instance" "tomcat_instance" {
 
 
   }
-}
+
 
 resource "aws_instance" "nginx_instance" {
   ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
