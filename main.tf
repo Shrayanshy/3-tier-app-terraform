@@ -122,7 +122,11 @@ resource "aws_db_instance" "rds_instance" {
   password            = var.database_password
   parameter_group_name = aws_db_parameter_group.mariadb_parameter_group.name
   skip_final_snapshot = true
-  vpc_id = aws_vpc.my_vpc.id
+
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+
+  # Specify the DB subnet group created above
+  db_subnet_group_name = aws_db_subnet_group.rds_subnet_group.name
 
   tags = {
     Name = "MyRDSInstance"
