@@ -130,7 +130,7 @@ resource "aws_security_group" "tomcat_sg" {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.nginx_sg.id] # Allow traffic from Nginx instance
+    security_groups =  ["0.0.0.0/0"] # Allow traffic from Nginx instance
   }
   
   // Add more inbound rules as needed
