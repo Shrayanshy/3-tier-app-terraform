@@ -209,6 +209,12 @@ resource "aws_instance" "tomcat_instance" {
               cd .. && cd lib  && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql-connector.jar
               cd .. && sudo chmod 744 bin/* && cd bin &&  bash startup.sh
               cd
+              # Install MySQL client
+            yum install -y mariadb105-test.x86_64
+
+            # Run SQL commands on remote RDS instance
+            mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e "CREATE DATABASE IF NOT EXISTS studentapp;"
+            mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e "CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));"
 
               echo -e "<?xml version='1.0' encoding='utf-8'?>
 <Context>
@@ -222,11 +228,7 @@ resource "aws_instance" "tomcat_instance" {
 
   security_groups = [aws_security_group.tomcat_sg.id]
 
-  provisioner "remote-exec" {
-    inline = [
-      "/usr/bin/mysql -h ${aws_db_instance.rds_instance.address} -P 3306 -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'",
-      "/usr/bin/mysql -h ${aws_db_instance.rds_instance.address} -P 3306 -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'"
-    ]
+
   }
 }
 
