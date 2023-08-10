@@ -71,7 +71,7 @@ resource "aws_nat_gateway" "my_nat_gateway" {
 }
 
 resource "aws_eip" "nat_eip" {
-  vpc = true
+  domain = "vpc"
 
   tags = {
     Name = "MyNATEIP"
