@@ -25,15 +25,15 @@ resource "aws_subnet" "private_subnet_2" {
 }
 
 resource "aws_db_subnet_group" "rds_subnet_group" {
-  name       = "my-rds-subnet-group"
+  name       = "my-1rds-subnet-group"
   subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
 }
 
 resource "aws_db_instance" "rds_instance" {
   allocated_storage    = 20
   storage_type        = "gp2"
-  engine              = "mysql"
-  engine_version      = "5.7"
+  engine              = "mariadb"
+  engine_version      = "10.4"
   instance_class      = "db.t3.micro"
   identifier          = "mydb1"
   username            = var.database_username
@@ -60,13 +60,14 @@ resource "null_resource" "create_database" {
     timestamp = timestamp()
   }
 
-provisioner "local-exec" {
-  command = <<-EOT
-    /usr/bin/mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'
-    /usr/bin/mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'
-  EOT
+  provisioner "local-exec" {
+    command = <<-EOT
+      /usr/bin/mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e 'CREATE DATABASE IF NOT EXISTS studentapp;'
+      /usr/bin/mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e 'CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));'
+    EOT
+  }
 }
-}
+
 
 
 resource "aws_security_group" "rds_sg" {
@@ -156,7 +157,7 @@ resource "aws_instance" "tomcat_instance" {
               driverClassName=\"com.mysql.jdbc.Driver\"
               url=\"jdbc:mysql://${aws_db_instance.rds_instance.endpoint}:3306/${var.database_name}?autoReconnect=true\" 
               validationQuery=\"SELECT 1\" testOnBorrow=\"true\" />
-</Context>" > /usr/share/tomcat8/conf/context.xml
+</Context>" > /root/apache/conf/context.xml
               EOF
   
   security_groups = [aws_security_group.tomcat_sg.id]
