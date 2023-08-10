@@ -86,6 +86,13 @@ resource "aws_internet_gateway" "my_internet_gateway" {
   }
 }
 
+resource "aws_route" "internet_route" {
+  route_table_id         = aws_vpc.my_vpc.default_route_table_id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.my_internet_gateway.id
+}
+
+
 resource "aws_route_table" "private_route_table" {
   vpc_id = aws_vpc.my_vpc.id
 
