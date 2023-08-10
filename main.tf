@@ -195,7 +195,7 @@ resource "aws_security_group" "tomcat_sg" {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.nginx_sg.id]  # This should be a security group ID, not an IP address
+    security_groups = [aws_security_group.nginx_sg.name]  # This should be a security group ID, not an IP address
   }
 
   // Add more inbound rules as needed
