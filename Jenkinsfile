@@ -9,7 +9,7 @@ pipeline {
         }
         stage('terraform') {
             steps {
-                sh '''cd 3-tier-app-terraform
+                sh '''
                 terraform init
                 terraform apply -var-file=variables.tfvars
                 '''
