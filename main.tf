@@ -176,7 +176,7 @@ resource "aws_instance" "tomcat_instance" {
 resource "aws_instance" "nginx_instance" {
   ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
   instance_type = "t3.micro"     # Change as needed
-  subnet_id     = aws_subnet.public_subnet.id
+  subnet_id     = aws_subnet.public_subnet_1.id
   
   user_data = <<-EOF
               #!/bin/bash
