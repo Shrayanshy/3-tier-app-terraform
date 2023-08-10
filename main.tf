@@ -6,7 +6,12 @@ resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"
 }
 
-resource "aws_subnet" "public_subnet" {
+resource "aws_subnet" "public_subnet_1" {
+  vpc_id                  = aws_vpc.my_vpc.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true
+}
+resource "aws_subnet" "public_subnet_2" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
@@ -26,7 +31,7 @@ resource "aws_subnet" "private_subnet_2" {
 
 resource "aws_db_subnet_group" "rds_subnet_group" {
   name       = "my-1rds-subnet-group"
-  subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
+  subnet_ids = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
 }
 
 resource "aws_db_parameter_group" "mariadb_parameter_group" {
@@ -119,6 +124,7 @@ resource "aws_security_group" "nginx_sg" {
 resource "aws_security_group" "tomcat_sg" {
   name        = "tomcat-sg"
   description = "Security group for Tomcat instance"
+  vpc_id = aws_vpc.my_vpc.id
   
   ingress {
     from_port       = 8080
