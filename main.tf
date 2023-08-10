@@ -32,8 +32,8 @@ resource "aws_db_subnet_group" "rds_subnet_group" {
 resource "aws_db_instance" "rds_instance" {
   allocated_storage    = 20
   storage_type        = "gp2"
-  engine              = "mysql"
-  engine_version      = "5.7"
+  engine              = "MariaDB"
+  engine_version      = "10.6.14"
   instance_class      = "db.t3.micro"
   identifier          = "mydb1"
   username            = var.database_username
@@ -133,7 +133,7 @@ resource "aws_security_group" "tomcat_sg" {
 }
 
 resource "aws_instance" "tomcat_instance" {
-  ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
+  ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
   instance_type = "t3.micro"     # Change as needed
   subnet_id     = aws_subnet.private_subnet_1.id
   
@@ -163,7 +163,7 @@ resource "aws_instance" "tomcat_instance" {
 }
 
 resource "aws_instance" "nginx_instance" {
-  ami           = "ami-040d60c831d02d41c" # Replace with a valid AMI ID
+  ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
   instance_type = "t3.micro"     # Change as needed
   subnet_id     = aws_subnet.public_subnet.id
   
