@@ -118,7 +118,7 @@ resource "aws_db_instance" "rds_instance" {
   engine_version      = "10.6.14"  # Updated MariaDB version
   instance_class      = "db.t3.micro"
   identifier          = "mydb1"
-  username            = admin
+  username            = "admin"
   password            = 12345678
   parameter_group_name = aws_db_parameter_group.mariadb_parameter_group.name
   skip_final_snapshot = true
@@ -169,6 +169,13 @@ resource "aws_security_group" "nginx_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  ingress {
+
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   egress {
     from_port   = 0
@@ -188,6 +195,12 @@ resource "aws_security_group" "tomcat_sg" {
     to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.nginx_sg.id]  # This should be a security group ID, not an IP address
+  }
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -215,22 +228,55 @@ cd apache
 cd webapps && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
 cd .. && cd lib  && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql-connector.jar
 cd .. && sudo chmod 744 bin/* && cd bin &&  bash startup.sh
-cd
+
 # Run SQL commands on remote RDS instance
 mysql -h ${aws_db_instance.rds_instance.endpoint} -u admin -p12345678 -e "CREATE DATABASE IF NOT EXISTS studentapp;"
 mysql -h ${aws_db_instance.rds_instance.endpoint} -u admin -p12345678  -D studentapp -e "CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));"
 
-echo '<?xml version="1.0" encoding="utf-8"?>
+
+cat << EOC > /apache/conf/context.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!-- The contents of this file will be loaded for each web application -->
 <Context>
-    <Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource" 
-              maxActive="100" maxIdle="30" maxWait="10000" username="${var.database_username}" password="${var.database_password}" 
-              driverClassName="com.mysql.jdbc.Driver"
-              url="jdbc:mysql://${aws_db_instance.rds_instance.address}:3306/studentapp />
-</Context>' > apache/conf/context.xml
 
-              EOF
+<Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource"
+           maxTotal="500" maxIdle="30" maxWaitMillis="1000"
+           username="admin" password="12345678" driverClassName="com.mysql.jdbc.Driver"
+           url="jdbc:mysql://${aws_db_instance.rds_instance.endpoint}/studentapp"/>
 
-  security_groups = [aws_security_group.tomcat_sg.id]
+
+    <!-- Default set of monitored resources. If one of these changes, the    -->
+    <!-- web application will be reloaded.                                   -->
+    <WatchedResource>WEB-INF/web.xml</WatchedResource>
+<WatchedResource>\$\{catalina.base\}/conf/web.xml</WatchedResource>
+
+
+
+
+    <!-- Uncomment this to disable session persistence across Tomcat restarts -->
+    <!--
+    <Manager pathname="" />
+    -->
+</Context>
+EOC         
+  EOF
+ security_groups = [aws_security_group.tomcat_sg.id]
 
 
   }
@@ -270,18 +316,6 @@ EOF
   security_groups = [aws_security_group.nginx_sg.id]
 }
 
-variable "database_username" {
-  description = "Database username"
-}
-
-variable "database_password" {
-  description = "Database password"
-}
-
-variable "database_name" {
-  description = "Database name"
-}
-
 output "public_instance_ip" {
   value = aws_instance.nginx_instance.public_ip
 }
@@ -293,3 +327,5 @@ output "private_instance_ip" {
 output "rds_endpoint" {
   value = aws_db_instance.rds_instance.endpoint
 }
+
+
