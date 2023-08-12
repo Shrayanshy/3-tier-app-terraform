@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "eu-north-1" # Change this to your desired region
+  region = "eu-north-1" 
 }
 
 resource "aws_vpc" "my_vpc" {
@@ -115,7 +115,7 @@ resource "aws_db_instance" "rds_instance" {
   allocated_storage    = 20
   storage_type        = "gp2"
   engine              = "mariadb"
-  engine_version      = "10.6.14"  # Updated MariaDB version
+  engine_version      = "10.6.14"  
   instance_class      = "db.t3.micro"
   identifier          = "mydb1"
   username            = "admin"
@@ -125,7 +125,6 @@ resource "aws_db_instance" "rds_instance" {
 
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
-  # Specify the DB subnet group created above
   db_subnet_group_name = aws_db_subnet_group.rds_subnet_group.name
 
   tags = {
@@ -194,8 +193,8 @@ resource "aws_security_group" "tomcat_sg" {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.nginx_sg.id]  # This should be a security group ID, not an IP address
-  }
+    security_groups = [aws_security_group.nginx_sg.id]  
+
   ingress {
     from_port   = 22
     to_port     = 22
@@ -212,8 +211,8 @@ resource "aws_security_group" "tomcat_sg" {
 }
 
 resource "aws_instance" "tomcat_instance" {
-  ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
-  instance_type = "t3.micro"     # Change as needed
+  ami           = "ami-0cea4844b980fe49e" 
+  instance_type = "t3.micro"     
   subnet_id     = aws_subnet.private_subnet_1.id
   key_name = "eu-1"
 
@@ -230,8 +229,8 @@ cd .. && cd lib  && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql
 cd .. && sudo chmod 744 bin/* && cd bin &&  bash startup.sh
 
 # Run SQL commands on remote RDS instance
-mysql -h ${aws_db_instance.rds_instance.endpoint} -u admin -p12345678 -e "CREATE DATABASE IF NOT EXISTS studentapp;"
-mysql -h ${aws_db_instance.rds_instance.endpoint} -u admin -p12345678  -D studentapp -e "CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));"
+mysql -h ${aws_db_instance.rds_instance.address} -u admin -p12345678 -e "CREATE DATABASE IF NOT EXISTS studentapp;"
+mysql -h ${aws_db_instance.rds_instance.address} -u admin -p12345678  -D studentapp -e "CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));"
 
 
 cat << EOC > /apache/conf/context.xml
@@ -258,14 +257,13 @@ cat << EOC > /apache/conf/context.xml
 <Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource"
            maxTotal="500" maxIdle="30" maxWaitMillis="1000"
            username="admin" password="12345678" driverClassName="com.mysql.jdbc.Driver"
-           url="jdbc:mysql://${aws_db_instance.rds_instance.endpoint}/studentapp"/>
+           url="jdbc:mysql://${aws_db_instance.rds_instance.address}/studentapp"/>
 
 
     <!-- Default set of monitored resources. If one of these changes, the    -->
     <!-- web application will be reloaded.                                   -->
     <WatchedResource>WEB-INF/web.xml</WatchedResource>
-<WatchedResource>\$\{catalina.base\}/conf/web.xml</WatchedResource>
-
+<WatchedResource>\$\{catalina.base}/conf/web.xml</WatchedResource>
 
 
 
@@ -274,7 +272,7 @@ cat << EOC > /apache/conf/context.xml
     <Manager pathname="" />
     -->
 </Context>
-EOC         
+        
   EOF
  security_groups = [aws_security_group.tomcat_sg.id]
 
@@ -283,8 +281,8 @@ EOC
 
 
 resource "aws_instance" "nginx_instance" {
-  ami           = "ami-0cea4844b980fe49e" # Replace with a valid AMI ID
-  instance_type = "t3.micro"     # Change as needed
+  ami           = "ami-0cea4844b980fe49e" 
+  instance_type = "t3.micro"     
   subnet_id     = aws_subnet.public_subnet_1.id
   key_name = "eu-1"
 
@@ -328,4 +326,6 @@ output "rds_endpoint" {
   value = aws_db_instance.rds_instance.endpoint
 }
 
-
+output "rds_instance" {
+  value = aws_db_instance.rds_instance.address
+}
