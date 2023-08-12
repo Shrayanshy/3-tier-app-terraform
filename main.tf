@@ -118,8 +118,8 @@ resource "aws_db_instance" "rds_instance" {
   engine_version      = "10.6.14"  # Updated MariaDB version
   instance_class      = "db.t3.micro"
   identifier          = "mydb1"
-  username            = var.database_username
-  password            = var.database_password
+  username            = admin
+  password            = 12345678
   parameter_group_name = aws_db_parameter_group.mariadb_parameter_group.name
   skip_final_snapshot = true
 
@@ -217,16 +217,15 @@ cd .. && cd lib  && wget https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql
 cd .. && sudo chmod 744 bin/* && cd bin &&  bash startup.sh
 cd
 # Run SQL commands on remote RDS instance
-mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -e "CREATE DATABASE IF NOT EXISTS studentapp;"
-mysql -h ${aws_db_instance.rds_instance.endpoint} -u ${var.database_username} -p${var.database_password} -D studentapp -e "CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));"
+mysql -h ${aws_db_instance.rds_instance.endpoint} -u admin -p12345678 -e "CREATE DATABASE IF NOT EXISTS studentapp;"
+mysql -h ${aws_db_instance.rds_instance.endpoint} -u admin -p12345678  -D studentapp -e "CREATE TABLE IF NOT EXISTS students (student_id INT NOT NULL AUTO_INCREMENT, student_name VARCHAR(100) NOT NULL, student_addr VARCHAR(100) NOT NULL, student_age VARCHAR(3) NOT NULL, student_qual VARCHAR(20) NOT NULL, student_percent VARCHAR(10) NOT NULL, student_year_passed VARCHAR(10) NOT NULL, PRIMARY KEY (student_id));"
 
 echo '<?xml version="1.0" encoding="utf-8"?>
 <Context>
     <Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource" 
               maxActive="100" maxIdle="30" maxWait="10000" username="${var.database_username}" password="${var.database_password}" 
               driverClassName="com.mysql.jdbc.Driver"
-              url="jdbc:mysql://${aws_db_instance.rds_instance.address}:3306/${var.database_name}?autoReconnect=true" 
-              validationQuery="SELECT 1" testOnBorrow="true" />
+              url="jdbc:mysql://${aws_db_instance.rds_instance.address}:3306/studentapp />
 </Context>' > apache/conf/context.xml
 
               EOF
@@ -250,7 +249,7 @@ yum update -y
 yum install -y nginx
 
 
-cat << EOC > /etc/nginx/nginx.conf
+cat << EOC > /etc/nginx/conf.d/reverse-proxy.conf
 server {
     listen 80;
 
